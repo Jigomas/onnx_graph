@@ -5,18 +5,20 @@
 
 
 
-enum class DataType { FLOAT32, INT64, FLOAT64, UNKNOWN};
+enum class DataType {FLOAT32, INT32, INT64, FLOAT64, UNKNOWN};
 
 
 
-class TensorShape final {
+class TensorShape {
+public:
     std::vector<int64_t> dims;
     bool                 is_dynamic = false; 
 };
 
 
 
-class Tensor final {
+class Tensor {
+public:
     std::string        name;
     DataType           dtype          = DataType::UNKNOWN;
     TensorShape        shape;

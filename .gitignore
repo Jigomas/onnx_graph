@@ -1,0 +1,29 @@
+# Сборка
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Бинарники
+*.o
+*.a
+*.so
+*.out
+*.exe
+
+# Сгенерированные protobuf файлы
+*.pb.cc
+*.pb.h
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

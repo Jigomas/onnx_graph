@@ -33,7 +33,7 @@ public:
     void AddNode (std::unique_ptr<Node> node);
     void AddTensor(const Tensor& tensor);
 
-    Node* FindNode(const std::string& name);
+    Node* FindNode(const std::string& name) const;
     std::optional<Tensor> FindTensor(const std::string& name) const;
 
     std::vector<Node*> TopologicalSort() const;
@@ -44,8 +44,9 @@ public:
     
 private:
     void TopologicalSortData(
-        const std::string&                     node_name,
-        std::unordered_map<std::string, bool>& visited,
-        std::vector<Node*>&                    result
+        const std::string&                            node_name,
+        std::unordered_map<std::string, bool>&        visited,
+        const std::unordered_map<std::string, Node*>& tensor_producer,
+        std::vector<Node*>&                           result
     ) const;
 };

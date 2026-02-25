@@ -1,0 +1,135 @@
+#include "../include/graph.hpp"
+
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+
+
+
+Graph::Graph(const std::string& name): name(name) {};
+
+Graph Graph::Clone() const {
+    Graph copy(name);
+
+    for (const auto& node_ptr : nodes) {  
+        copy.nodes.push_back(std::make_unique<Node>(*node_ptr));
+    }
+
+    copy.tensors = tensors;
+    copy.inputs  = inputs;
+    copy.outputs = outputs;
+
+    return copy;
+}
+
+//TODO - provide error handling
+//TODO - try to rewrite on templates as much as i can
+//TODO - think that maybe change every   for (auto& ...)   to rval
+//TODO - ASSERTS
+void Graph::AddNode(std::unique_ptr<Node> node) {
+    if (!node) throw std::invalid_argument("Node is null");
+
+    nodes.push_back(std::move(node));
+}
+
+
+
+void Graph::AddTensor(const Tensor& tensor) {
+    tensors[tensor.name] = tensor;
+}
+
+
+
+Node* Graph::FindNode(const std::string& name) const {
+    for (const auto& node_ptr : nodes) {
+        if (node_ptr->name == name) {
+            return node_ptr.get();
+        }
+    }
+
+    return nullptr;
+}
+
+
+
+std::optional<Tensor> 
+Graph::FindTensor(const std::string& target_name) const {
+    auto it = tensors.find(target_name);
+    if (it == tensors.end()) 
+        return std::nullopt;
+    
+    return it->second;
+}
+
+
+
+void Graph::DumpGraph() const {
+    std::cout << "Graph: "     << name           << '\n';
+    std::cout << "  Nodes:   " << nodes.size()   << '\n';
+    std::cout << "  Tensors: " << tensors.size() << '\n';
+
+    std::cout << "  Inputs:  ";
+    for (const auto& inp : inputs)  
+                                        std::cout << inp << ' ';
+    std::cout << '\n';
+
+    std::cout << "  Outputs: ";
+    for (const auto& out : outputs) 
+                                        std::cout << out << ' ';
+    std::cout << '\n';
+
+    for (const auto& node_ptr : nodes) {
+        std::cout << "  [" << node_ptr->op_type << "] " << node_ptr->name << '\n';
+        for (const auto& [key, val] : node_ptr->attributes) {
+            std::cout << "    attr: " << key << '\n';
+        }
+    }
+}
+
+
+
+std::vector<Node*> Graph::TopologicalSort() const {
+    std::unordered_map<std::string, bool> visited;
+    std::vector<Node*>                    result;
+
+    std::unordered_map<std::string, Node*> tensor_producer;
+    for (const auto& node_ptr : nodes) {
+        for (const auto& out : node_ptr->outputs) {
+            tensor_producer[out] = node_ptr.get();
+        }
+    }
+
+    for (const auto& node_ptr : nodes) {
+        if (!visited[node_ptr->name]) {
+            TopologicalSortData(node_ptr->name, visited, tensor_producer, result);
+        }
+    }
+
+    return result;
+}
+
+
+
+void Graph::TopologicalSortData(
+    const std::string&                            node_name,
+    std::unordered_map<std::string, bool>&        visited,
+    const std::unordered_map<std::string, Node*>& tensor_producer,
+    std::vector<Node*>&                           result) const
+{
+    visited[node_name] = true;
+
+    Node* current = FindNode(node_name);
+    if (!current) return;
+
+    for (const auto& input_name : current->inputs) {
+        auto it = tensor_producer.find(input_name);
+        if (it != tensor_producer.end()) {
+            const std::string& producer_name = it->second->name;
+            if (!visited[producer_name]) {
+                TopologicalSortData(producer_name, visited, tensor_producer, result);
+            }
+        }
+    }
+
+    result.push_back(current);
+}
