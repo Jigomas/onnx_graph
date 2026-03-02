@@ -1,4 +1,5 @@
 #pragma once 
+
 #include <string>
 #include <vector>
 #include <cstdint> 
@@ -13,6 +14,13 @@ class TensorShape {
 public:
     std::vector<int64_t> dims;
     bool                 is_dynamic = false; 
+
+    TensorShape()                                  = default;
+    ~TensorShape()                                 = default;
+    TensorShape(const TensorShape&)                = default;
+    TensorShape& operator=(const TensorShape&)     = default;
+    TensorShape(TensorShape&&) noexcept            = default;
+    TensorShape& operator=(TensorShape&&) noexcept = default;
 };
 
 

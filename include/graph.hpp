@@ -13,12 +13,6 @@
 
 class Graph {
 public:
-    std::string                             name;
-    std::vector<std::unique_ptr<Node>>      nodes;    
-    std::unordered_map<std::string, Tensor> tensors;
-    std::vector<std::string>                inputs;
-    std::vector<std::string>                outputs;
-
     explicit Graph(const std::string& name = "");
     ~Graph() = default;
 
@@ -32,19 +26,26 @@ public:
     
     void AddNode (std::unique_ptr<Node> node);
     void AddTensor(const Tensor& tensor);
+    void AddTensor(Tensor&& tensor);
 
-    Node* FindNode(const std::string& name) const;
-    std::optional<Tensor> FindTensor(const std::string& name) const;
+    Node* FindNode(const std::string& node_name) const;
+    std::optional<Tensor> FindTensor(const std::string& tensor_name) const;
 
     std::vector<Node*> TopologicalSort() const;
 
     void DumpGraph() const;
 
-
+    std::string                             name;
+    std::vector<std::unique_ptr<Node>>      nodes;    
+    std::unordered_map<std::string, Tensor> tensors;
+    std::vector<std::string>                inputs;
+    std::vector<std::string>                outputs;
     
+    
+
 private:
     void TopologicalSortData(
-        const std::string&                            node_name,
+        Node*                                         node,
         std::unordered_map<std::string, bool>&        visited,
         const std::unordered_map<std::string, Node*>& tensor_producer,
         std::vector<Node*>&                           result

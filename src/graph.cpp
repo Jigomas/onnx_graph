@@ -6,7 +6,7 @@
 
 
 
-Graph::Graph(const std::string& name): name(name) {};
+Graph::Graph(const std::string& name): name(name) {}
 
 Graph Graph::Clone() const {
     Graph copy(name);
@@ -40,6 +40,13 @@ void Graph::AddTensor(const Tensor& tensor) {
 
 
 
+void Graph::AddTensor(Tensor&& tensor) {
+    std::string key = tensor.name;
+    tensors[key] = std::move(tensor);
+}
+
+
+
 Node* Graph::FindNode(const std::string& name) const {
     for (const auto& node_ptr : nodes) {
         if (node_ptr->name == name) {
@@ -64,24 +71,24 @@ Graph::FindTensor(const std::string& target_name) const {
 
 
 void Graph::DumpGraph() const {
-    std::cout << "Graph: "     << name           << '\n';
-    std::cout << "  Nodes:   " << nodes.size()   << '\n';
-    std::cout << "  Tensors: " << tensors.size() << '\n';
+    std::cout << " Graph:   " << name           << '\n';
+    std::cout << " Nodes:   " << nodes.size()   << '\n';
+    std::cout << " Tensors: " << tensors.size() << '\n';
 
-    std::cout << "  Inputs:  ";
-    for (const auto& inp : inputs)  
-                                        std::cout << inp << ' ';
+    std::cout << " Inputs:  ";
+    for (const auto& inp : inputs)
+        std::cout << inp << ' ';
     std::cout << '\n';
 
-    std::cout << "  Outputs: ";
+    std::cout << " Outputs: ";
     for (const auto& out : outputs) 
                                         std::cout << out << ' ';
     std::cout << '\n';
 
     for (const auto& node_ptr : nodes) {
-        std::cout << "  [" << node_ptr->op_type << "] " << node_ptr->name << '\n';
+        std::cout << " [" << node_ptr->op_type << "] " << node_ptr->name << '\n';
         for (const auto& [key, val] : node_ptr->attributes) {
-            std::cout << "    attr: " << key << '\n';
+            std::cout << "   attr: " << key << '\n';
         }
     }
 }
@@ -89,19 +96,27 @@ void Graph::DumpGraph() const {
 
 
 std::vector<Node*> Graph::TopologicalSort() const {
+    std::unordered_map<std::string, Node*> tensor_producer;
+    for (const auto& node_ptr : nodes) {
+        for (const auto& output_name : node_ptr->outputs) {
+            tensor_producer[output_name] = node_ptr.get();
+        }
+    }
+
     std::unordered_map<std::string, bool> visited;
     std::vector<Node*>                    result;
 
-    std::unordered_map<std::string, Node*> tensor_producer;
+    result.reserve(nodes.size());
+
     for (const auto& node_ptr : nodes) {
-        for (const auto& out : node_ptr->outputs) {
-            tensor_producer[out] = node_ptr.get();
+        if (!visited[node_ptr->name]) {
+            TopologicalSortData(node_ptr.get(), visited, tensor_producer, result);
         }
     }
 
     for (const auto& node_ptr : nodes) {
         if (!visited[node_ptr->name]) {
-            TopologicalSortData(node_ptr->name, visited, tensor_producer, result);
+            TopologicalSortData(node_ptr.get(), visited, tensor_producer, result);
         }
     }
 
@@ -111,25 +126,24 @@ std::vector<Node*> Graph::TopologicalSort() const {
 
 
 void Graph::TopologicalSortData(
-    const std::string&                            node_name,
-    std::unordered_map<std::string, bool>&        visited,
-    const std::unordered_map<std::string, Node*>& tensor_producer,
-    std::vector<Node*>&                           result) const
+    Node*                                          node,
+    std::unordered_map<std::string, bool>&         visited,
+    const std::unordered_map<std::string, Node*>&  tensor_producer,
+    std::vector<Node*>&                            result) const
 {
-    visited[node_name] = true;
+    visited[node->name] = true;
 
-    Node* current = FindNode(node_name);
-    if (!current) return;
-
-    for (const auto& input_name : current->inputs) {
+    for (const auto& input_name : node->inputs) {
         auto it = tensor_producer.find(input_name);
-        if (it != tensor_producer.end()) {
-            const std::string& producer_name = it->second->name;
-            if (!visited[producer_name]) {
-                TopologicalSortData(producer_name, visited, tensor_producer, result);
-            }
+
+        if (it == tensor_producer.end()) continue;
+
+        Node* producer = it->second;
+
+        if (!visited[producer->name]) {
+            TopologicalSortData(producer, visited, tensor_producer, result);
         }
     }
 
-    result.push_back(current);
+    result.push_back(node);
 }
