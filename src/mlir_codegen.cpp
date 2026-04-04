@@ -89,7 +89,7 @@ std::string MLIRCodegen::GenAdd(const Node&                                     
     std::ostringstream s;
     s << "    linalg.generic { indexing_maps = [" << map << ", " << map << ", " << map << "],"
       << " iterator_types = " << it << " }\n"
-      << "      ins(" << m.at(A) << " : " << GetMemRefType(A) << ", " << m.at(B) << " : "
+      << "      ins(" << m.at(A) << ", " << m.at(B) << " : " << GetMemRefType(A) << ", "
       << GetMemRefType(B) << ")\n"
       << "      outs(" << m.at(C) << " : " << GetMemRefType(C) << ") {\n"
       << "    ^bb0(%a: f32, %b: f32, %c: f32):\n"
@@ -106,7 +106,7 @@ std::string MLIRCodegen::GenMul(const Node&                                     
     std::ostringstream s;
     s << "    linalg.generic { indexing_maps = [" << map << ", " << map << ", " << map << "],"
       << " iterator_types = " << it << " }\n"
-      << "      ins(" << m.at(A) << " : " << GetMemRefType(A) << ", " << m.at(B) << " : "
+      << "      ins(" << m.at(A) << ", " << m.at(B) << " : " << GetMemRefType(A) << ", "
       << GetMemRefType(B) << ")\n"
       << "      outs(" << m.at(C) << " : " << GetMemRefType(C) << ") {\n"
       << "    ^bb0(%a: f32, %b: f32, %c: f32):\n"
@@ -213,8 +213,8 @@ std::string MLIRCodegen::GenerateMLIR() const {
     auto sorted = graph_.TopologicalSort();
 
     std::ostringstream out;
-    out << "// MLIR module: " << graph_.name << "\n\nmodule {\n  func.func @model(\n";
-
+    out << "// MLIR module: " << graph_.name << "\n";
+    out << "// Arguments:\n";
     for (size_t i = 0; i < tensors.size(); i++) {
         const std::string& name = tensors[i];
         auto               it   = graph_.tensors.find(name);
@@ -223,13 +223,19 @@ std::string MLIRCodegen::GenerateMLIR() const {
         bool is_out =
             std::find(graph_.outputs.begin(), graph_.outputs.end(), name) != graph_.outputs.end();
         bool is_w = (it != graph_.tensors.end() && it->second.is_initializer);
-        out << "    %arg" << i << " : " << GetMemRefType(name) << "  // " << name;
+        out << "//   %arg" << i << " : " << name;
         if (is_in)
             out << " [input]";
         if (is_out)
             out << " [output]";
         if (is_w)
             out << " [weight]";
+        out << "\n";
+    }
+    out << "\nmodule {\n  func.func @model(\n";
+
+    for (size_t i = 0; i < tensors.size(); i++) {
+        out << "    %arg" << i << " : " << GetMemRefType(tensors[i]);
         if (i + 1 < tensors.size())
             out << ",";
         out << "\n";
